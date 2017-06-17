@@ -11,6 +11,11 @@ def home():
     return render_template('index.html')
 
 
+@app.route('/generate')
+def generate():
+    return 'generated!'
+
+
 @app.errorhandler(500)
 def server_error(e):
     logging.exception('An error occurred during a request.')
@@ -24,4 +29,3 @@ if __name__ == '__main__':
     # This is used when running locally. Gunicorn is used to run the
     # application on Google App Engine. See entrypoint in app.yaml.
     app.run(host='127.0.0.1', port=8080, debug=True)
-# [END app]

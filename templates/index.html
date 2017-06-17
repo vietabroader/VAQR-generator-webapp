@@ -1,21 +1,37 @@
 <!doctype html>
 <html>
 <head>
-  <title>Static Files</title>
+  <title>VAQR Generator</title>
   <!--
   Flask automatically makes files in the 'static' directory available via
   '/static'.
   -->
   <link rel="stylesheet" type="text/css" href="/static/main.css">
+  <script src="/static/jquery-3.2.1.min.js"></script>
 </head>
 <body>
-<h1>VAQR Code Generator</h1>
-<div>
-  <form>
-    <textarea rows="10" cols="50" placeholder="Enter each email on one line"></textarea>
-    <br>
-    <input type="submit" value="Generate">
-  </form>
-<div>
+  <h1>VAQR Code Generator</h1>
+  <div>
+    <form action="#" id="emails-form">
+      <textarea rows="10" cols="50" placeholder="Enter each email on one line">
+      </textarea>
+      <br>
+      <input type="submit" value="Generate">
+    </form>
+  <div>
+  <div id="log"></div>
+  <script>
+    $(document).ready(function() {
+      $(document).on("submit", "#emails-form", () => {
+        $.ajax({
+          url: "/generate",
+          success: (data, textStatus, jqXHR) => {
+            $("#log").append("<p>" + textStatus + ": " + data + "</p>");
+          }
+        });
+        return false;
+      });
+    });
+  </script>
 </body>
 </html>

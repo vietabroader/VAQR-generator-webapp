@@ -2,6 +2,7 @@ import logging
 
 from flask import Flask
 from flask import render_template
+from flask import request
 
 app = Flask(__name__)
 
@@ -11,8 +12,9 @@ def home():
     return render_template('index.html')
 
 
-@app.route('/generate')
+@app.route('/generate', methods=['POST'])
 def generate():
+    print request.form
     return 'generated!'
 
 

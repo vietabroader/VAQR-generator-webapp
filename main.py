@@ -1,19 +1,23 @@
 import os
+import httplib2
 import logging
 import qrcode
+import flask
+import configuration
 
 from flask import Flask
 from flask import render_template
 from flask import request
+from oauth2client import client
+from apiclient import discovery
+from googleapiclient.http import MediaFileUpload
 
 app = Flask(__name__)
+app.config.from_object('configuration')
 
 QR_IMAGE_DIR = "qr-images"
 IMAGE_EXTENSION = "png"
-
-@app.route('/')
-def home():
-    return render_template('index.html')
+DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive'
 
 
 def sanitize_email(e):
@@ -25,6 +29,58 @@ def sanitize_email(e):
 def email_to_filename(e):
     e = sanitize_email(e)
     return e + "." + IMAGE_EXTENSION
+
+
+def get_credential():
+    if 'credentials' not in flask.session:
+        return None
+    credentials = client.OAuth2Credentials.from_json(flask.session['credentials'])
+    if credentials.access_token_expired:
+        return None
+    return credentials
+
+
+def upload_to_Drive(fileDict):
+    credentials = get_credential()
+    # TODO: check when credentials is None
+    http = credentials.authorize(httplib2.Http())
+    drive_service = discovery.build('drive', 'v3', http=http)
+    links = {}
+    for email, file_path in fileDict.iteritems:
+        file_metadata = { 'name': file_path }
+        media = MediaFileUpload(file_path, mimetype='image/png')
+        file = drive_service.files().create(body=file_metadata,
+                                            media_body=media,
+                                            fields='webViewLink').execute()
+        links[email] = file.get('webViewLink')
+    return links
+
+
+@app.route('/')
+def index():
+    credentials = get_credential()
+    if credentials is None:
+        return flask.redirect(flask.url_for('oauth2callback'))
+    else:
+        return render_template('index.html')
+
+
+@app.route('/oauth2callback')
+def oauth2callback():
+    flow = client.flow_from_clientsecrets(
+        'client_secrets.json',
+        scope=DRIVE_SCOPE,
+        redirect_uri=flask.url_for('oauth2callback', _external=True))
+    flow.params['access_type'] = 'offline'           # offline access
+    flow.params['include_granted_scopes'] = 'true'   # incremental auth
+    if 'code' not in flask.request.args:
+        auth_uri = flow.step1_get_authorize_url()
+        return flask.redirect(auth_uri)
+    else:
+        auth_code = flask.request.args.get('code')
+        credentials = flow.step2_exchange(auth_code)
+        flask.session['credentials'] = credentials.to_json()
+        return flask.redirect(flask.url_for('index'))
 
 
 @app.route('/generate', methods=['POST'])

@@ -7,14 +7,14 @@ class VAQRGeneratorTestCase(unittest.TestCase):
     def setUp(self):
         main.app.testing = True
         self.app = main.app.test_client()
+        self.EMAILS = ['p1@test.com', 'p2@test.com']
 
     def test_index(self):
         r = self.app.get('/')
         assert r.status_code == 200
 
     def test_generate(self):
-        emails = ['p1@test.com', 'p2@test.com']
-        emailsStr = '\n'.join(emails)
+        emailsStr = '\n'.join(self.EMAILS)
         r = self.app.post('/generate', data=dict(
             emails=emailsStr
         ), follow_redirects=True)
@@ -25,7 +25,7 @@ class VAQRGeneratorTestCase(unittest.TestCase):
             file_path = os.path.join(main.QR_IMAGE_DIR, main.email_to_filename(e))
             assert os.path.exists(file_path),\
                 'Cannot find QR code for ' + e
-
+      
 
 if __name__ == '__main__':
     unittest.main()

@@ -102,3 +102,6 @@ ENV/
 
 # Project specific
 qr-images/
+client_secret.json
+client_secrets.json
+configuration.py

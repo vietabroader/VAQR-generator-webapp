@@ -1,23 +1,32 @@
-# Copyright 2015 Google Inc. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+import os
 import main
+import unittest
+
+class VAQRGeneratorTestCase(unittest.TestCase):
+
+    def setUp(self):
+        main.app.testing = True
+        self.app = main.app.test_client()
+
+    def test_index(self):
+        r = self.app.get('/')
+        assert r.status_code == 200
+
+    def test_generate(self):
+        emails = ['p1@test.com', 'p2@test.com']
+        emailsStr = '\n'.join(emails)
+        r = self.app.post('/generate', data=dict(
+            emails=emailsStr
+        ), follow_redirects=True)
+        assert os.path.isdir(main.QR_IMAGE_DIR),\
+            'Cannot find directory ' + QR_IMAGE_DIR
+        
+        for e in emails:
+            file_path = os.path.join(main.QR_IMAGE_DIR, main.email_to_filename(e))
+            assert os.path.exists(file_path),\
+                'Cannot find QR code for ' + e
 
 
-def test_index():
-    main.app.testing = True
-    client = main.app.test_client()
+if __name__ == '__main__':
+    unittest.main()
 
-    r = client.get('/')
-    assert r.status_code == 200

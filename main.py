@@ -13,8 +13,14 @@ from apiclient import discovery
 from googleapiclient.http import MediaFileUpload
 from googleapiclient import errors
 
+mode = os.getenv('VAQR_MODE', 'dev')
+if mode == 'dev':
+    import config_dev as config
+elif mode =='prod':
+    import config_prod as config
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = str(uuid.uuid4())
+app.config.from_object(config)
 
 QR_IMAGE_DIR = "qr-images"
 IMAGE_EXTENSION = "png"

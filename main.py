@@ -79,11 +79,8 @@ def upload_to_Drive(fileDict):
 
 @app.route('/')
 def index():
-    credentials = get_credential()
-    if credentials is None:
-        return redirect(url_for('oauth2callback'))
-    else:
-        return render_template('index.html')
+    email = session.get('email', '')
+    return render_template('index.html', email=email)
 
 
 @app.route('/oauth2callback')
@@ -104,6 +101,15 @@ def oauth2callback():
         session['credentials'] = credentials.to_json()
         session['email'] = user_info['email']
         return redirect(url_for('index'))
+
+
+@app.route('/oauth2revoke')
+def oauth2revoke():
+    credentials = get_credential()
+    if credentials is not None:
+        credentials.revoke(httplib2.Http())
+    session.clear()
+    return redirect(url_for('index'))
 
 
 @app.route('/generate', methods=['POST'])

@@ -25,6 +25,8 @@
   <br>
   <div>
     <form action="{{ url_for('generate') }}" method="POST" id="emailsForm">
+      Drive Folder ID <input type="text" name="folder_id">
+      <br>
       <textarea rows="10"  cols="50" placeholder="Enter each email on one line" 
                 name="emails" form="emailsForm"></textarea>
       <br>

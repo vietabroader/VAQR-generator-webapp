@@ -67,15 +67,16 @@ def get_user_info(credentials):
     return None
 
 
-def upload_to_Drive(fileDict):
+def upload_to_Drive(file_dict, folder_id):
     credentials = get_credential()
     if credentials is None:
         return None
     http = credentials.authorize(httplib2.Http())
     drive_service = discovery.build('drive', 'v3', http=http)
     links = {}
-    for email, file_path in fileDict.iteritems():
-        file_metadata = { 'name': os.path.basename(file_path) }
+    for email, file_path in file_dict.iteritems():
+        file_metadata = { 'name': os.path.basename(file_path),
+                          'parents': [folder_id] }
         media = MediaFileUpload(file_path, mimetype='image/png')
         file = drive_service.files().create(body=file_metadata,
                                             media_body=media,
@@ -90,6 +91,14 @@ def remove_files(files):
             os.remove(f)
         except OSError:
             app.logger.error("Error occured when try to delete %s" % (f))
+
+
+@app.before_request
+def before_request():
+    if (not app.debug) and request.url.startswith('http://'):
+        url = request.url.replace('http://', 'https://', 1)
+        code = 301
+        return redirect(url, code=code)
 
 
 @app.route('/')
@@ -107,7 +116,7 @@ def index():
 @app.route('/oauth2callback')
 def oauth2callback():
     flow = client.flow_from_clientsecrets(
-        'client_secrets.json',
+        'client_secret.json',
         scope=SCOPES,
         redirect_uri=url_for('oauth2callback', _external=True))
     flow.params['access_type'] = 'offline'           # offline access
@@ -140,7 +149,8 @@ def generate():
         return redirect(url_for('index'))
  
     emailsStr = request.form['emails']
-    # Split by '\n' and remove 'r'
+    folder_id = request.form['folder_id']
+
     emails = emailsStr.split("\n")
     app.logger.info("Received %d emails. Generating QR codes..." % (len(emails)))
     if not os.path.isdir(QR_IMAGE_DIR):
@@ -162,7 +172,7 @@ def generate():
     
     app.logger.info("Generated %d QR code" % (count_generated))
     app.logger.info("Uploading QR code to Drive")
-    email_link = upload_to_Drive(file_dict)
+    email_link = upload_to_Drive(file_dict, folder_id)
     app.logger.info("Finished uploading QR code to Drive")
     flash('QR code generated and uploaded to Google Drive')
     remove_files(file_dict.values())

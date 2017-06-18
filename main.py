@@ -125,6 +125,7 @@ def oauth2callback():
         user_info = get_user_info(credentials)
         session['credentials'] = credentials.to_json()
         session['email'] = user_info['email']
+        flash(u'Signed in successfully!', 'success')
         return redirect(url_for('index'))
 
 
@@ -134,15 +135,16 @@ def oauth2revoke():
     if credentials is not None:
         credentials.revoke(httplib2.Http())
     session.clear()
+    flash(u"Signed out successfully!", 'success')
     return redirect(url_for('index'))
 
 
 @app.route('/generate', methods=['POST'])
 def generate():
     if not is_signed_in():
-        flash('You need to sign in first')
+        flash(u'You need to sign in first', 'warning')
         return redirect(url_for('index'))
- 
+    
     emailsStr = request.form['emails']
     folder_id = request.form['folder_id']
 
@@ -169,7 +171,7 @@ def generate():
     app.logger.info("Uploading QR code to Drive")
     email_link = upload_to_Drive(file_dict, folder_id)
     app.logger.info("Finished uploading QR code to Drive")
-    flash('QR code generated and uploaded to Google Drive')
+    flash(u'QR code generated and uploaded to Google Drive', 'success')
     remove_files(file_dict.values())
     return redirect(url_for('index', email_link=json.dumps(email_link)))
 

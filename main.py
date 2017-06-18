@@ -194,9 +194,8 @@ def generate():
         email_link = upload_to_Drive(file_dict, folder_id)
     except errors.HttpError as err:
         flash("Error while uploading to Google Drive: %s" % (err), 'danger')
-        return redirect(url_for('index'))
-    finally:
         remove_files(file_dict.values())
+        return redirect(url_for('index'))
 
     app.logger.info("Finished uploading QR code to Drive")
 

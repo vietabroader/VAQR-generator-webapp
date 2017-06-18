@@ -37,3 +37,9 @@ body > .container {
 code {
   font-size: 80%;
 }
+
+.table td, .table th, .table tr {
+    height: 62px;
+    overflow: auto;
+    white-space: nowrap;
+}

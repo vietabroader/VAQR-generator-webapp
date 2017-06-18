@@ -1,15 +1,19 @@
 {% extends "layout.html" %}
 {% block body %}
-<div class="row">
-  <div class="col-md-6">
 
-    <form action="{{ url_for('generate') }}" method="POST" id="emailsForm">
-      Drive Folder ID <input type="text" name="folder_id">
-      <br>
-      <textarea rows="10"  cols="50" placeholder="Enter each email on one line" 
-                name="emails" form="emailsForm"></textarea>
-      <br>
-      <input type="submit" value="Generate">
+<div class="row">
+  <div class="col-md-6 col-md-offset-3">
+    <form action="{{ url_for('generate') }}" method="POST" id="emails_to_qr">
+      <div class="form-group">
+        <label for="folder_id">Drive Folder ID</label>
+        <input type="text" class="form-control" id="folder_id" aria-describedby="emailHelp">
+      </div>
+      <div class="form-group">
+        <label for="emails">Email List</label>
+        <textarea rows="5" placeholder="Enter one email per line." 
+                  name="emails" form="emails_to_qr" class="form-control"></textarea>
+      </div>
+      <input type="submit" value="Generate" class="btn btn-primary">
     </form>
     <br>
     <div>
@@ -23,24 +27,35 @@
       {% endif %}
       {% endwith %}
     </div>
-  </div> <!-- col-md-6 -->
+  </div> <!-- div col offset -->
+</div> <!-- div row -->
 
-  <div class="col-md-6">
+<div class="row">  
+  <div class="col-md-8 col-md-offset-2">
     {% if email_link %}
-      <table>
-        <tr>
-          <th>Email</th>
-          <th>Drive link</th>
-        </tr>
-        {% for item in email_link %}
-          <tr>
-            <td>{{ item }}</td>
-            <td>{{ email_link[item] }}</td>
-          </tr>
-        {% endfor %}
-      </table>
+      <table class="table"><thead>
+        <td>
+          <table class="table" style="table-layout:fixed;width:250px;">
+            <tr><th>Email</th></tr>
+            {% for item in email_link %}
+              <tr>
+                <td>{{ item }}</td>
+              </tr>
+            {% endfor %}
+          </table>
+        </td>
+        <td>
+          <table class="table">
+            <tr><th>Google Drive Links</th></tr>
+            {% for item in email_link %}
+              <tr>
+                <td><a href="{{ email_link[item] }}">{{ email_link[item] }}</a></td>
+              </tr>
+            {% endfor %}
+          </table>
+        </td>
+      </thead></table>
     {% endif %}
-  </div> <!-- col-md-6 -->
-</div>
-
+  </div> <!-- div col offset -->
+</div> <!-- div row -->
 {% endblock %}

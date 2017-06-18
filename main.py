@@ -4,7 +4,8 @@ import logging
 import qrcode
 import uuid
 
-from flask import Flask, render_template, request, session, url_for, redirect
+from flask import Flask, render_template, request, session, url_for, \
+    redirect, flash
 from oauth2client import client
 from apiclient import discovery
 from googleapiclient.http import MediaFileUpload
@@ -29,7 +30,6 @@ def email_to_filename(e):
     return e + "." + IMAGE_EXTENSION
 
 
-@app.template_filter('is_signed_in')
 def is_signed_in():
     return 'credentials' in session
 
@@ -59,7 +59,7 @@ def get_user_info(credentials):
   try:
     user_info = user_info_service.userinfo().get().execute()
   except errors.HttpError, e:
-    logging.error('An error occurred when getting user info: %s', e)
+    app.logger.error('An error occurred when getting user info: %s', e)
   if user_info and user_info.get('id'):
     return user_info
   else:
@@ -68,18 +68,27 @@ def get_user_info(credentials):
 
 def upload_to_Drive(fileDict):
     credentials = get_credential()
-    # TODO: check when credentials is None
+    if credentials is None:
+        return None
     http = credentials.authorize(httplib2.Http())
     drive_service = discovery.build('drive', 'v3', http=http)
     links = {}
-    for email, file_path in fileDict.iteritems:
-        file_metadata = { 'name': file_path }
+    for email, file_path in fileDict.iteritems():
+        file_metadata = { 'name': os.path.basename(file_path) }
         media = MediaFileUpload(file_path, mimetype='image/png')
         file = drive_service.files().create(body=file_metadata,
                                             media_body=media,
                                             fields='webViewLink').execute()
         links[email] = file.get('webViewLink')
     return links
+
+
+def remove_files(files):
+    for f in files:
+        try:
+            os.remove(f)
+        except OSError:
+            app.logger.error("Error occured when try to delete %s" % (f))
 
 
 @app.route('/')
@@ -119,29 +128,43 @@ def oauth2revoke():
 
 @app.route('/generate', methods=['POST'])
 def generate():
+    if not is_signed_in():
+        flash('You need to sign in first')
+        return redirect(url_for('index'))
+    print request.form
     emailsStr = request.form['emails']
     # Split by '\n' and remove 'r'
     emails = emailsStr.split("\n")
-    logging.info("Received %d emails. Generating QR codes..." % (len(emails)))
+    app.logger.info("Received %d emails. Generating QR codes..." % (len(emails)))
     if not os.path.isdir(QR_IMAGE_DIR):
         os.makedirs(QR_IMAGE_DIR)
-        logging.info("Created directory %s" % (QR_IMAGE_DIR))
+        app.logger.info("Created directory %s" % (QR_IMAGE_DIR))
 
+    count_generated = 0
+    file_dict = {}
     for e in emails:
-        imgQR = qrcode.make(e)
-        filename = os.path.join(QR_IMAGE_DIR, email_to_filename(e))
+        img_qr = qrcode.make(e)
+        file_name = email_to_filename(e)
+        file_path = os.path.join(QR_IMAGE_DIR, file_name)
         try:
-            imgQR.save(filename)
-            logging.info("Generated QR code for [%s] to: %s" % (e, filename))
+            img_qr.save(file_path)
+            file_dict[e] = file_path
+            count_generated += 1
         except IOError:
-            logging.warning("Cannot create ")
-
-    return 'generated!'
+            app.logger.error("Cannot create %s" % (file_name))
+    
+    app.logger.info("Generated %d QR code" % (count_generated))
+    app.logger.info("Uploading QR code to Drive")
+    upload_to_Drive(file_dict)
+    app.logger.info("Finished uploading QR code to Drive")
+    flash('QR code generated and uploaded to Google Drive')
+    remove_files(file_dict.values())
+    return redirect(url_for('index'))
 
 
 @app.errorhandler(500)
 def server_error(e):
-    logging.exception('An error occurred during a request.')
+    app.logger.exception('An error occurred during a request.')
     return """
     An internal error occurred: <pre>{}</pre>
     See logs for full stacktrace.
@@ -149,6 +172,7 @@ def server_error(e):
 
 
 if __name__ == '__main__':
+    app.logger.setLevel(logging.INFO)
     # This is used when running locally. Gunicorn is used to run the
     # application on Google App Engine. See entrypoint in app.yaml.
     app.run(host='127.0.0.1', port=8080, debug=True)

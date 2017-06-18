@@ -24,12 +24,24 @@
   </div>
   <br>
   <div>
-    <form action="{{ url_for('generate') }}" method="POST">
+    <form action="{{ url_for('generate') }}" method="POST" id="emailsForm">
       <textarea rows="10"  cols="50" placeholder="Enter each email on one line" 
                 name="emails" form="emailsForm"></textarea>
       <br>
       <input type="submit" value="Generate">
     </form>
   <div>
+  <br>
+  <div>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <ul class=flashes>
+      {% for message in messages %}
+        <li>{{ message }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+    {% endwith %}
+  </eidv>
 </body>
 </html>

@@ -29,8 +29,13 @@ def email_to_filename(e):
     return e + "." + IMAGE_EXTENSION
 
 
+@app.template_filter('is_signed_in')
+def is_signed_in():
+    return 'credentials' in session
+
+
 def get_credential():
-    if 'credentials' not in session:
+    if not is_signed_in():
         return None
     credentials = client.OAuth2Credentials.from_json(session['credentials'])
     if credentials.access_token_expired:
@@ -80,7 +85,7 @@ def upload_to_Drive(fileDict):
 @app.route('/')
 def index():
     email = session.get('email', '')
-    return render_template('index.html', email=email)
+    return render_template('index.html', email=email, is_signed_in=is_signed_in())
 
 
 @app.route('/oauth2callback')

@@ -42,6 +42,21 @@
       </ul>
     {% endif %}
     {% endwith %}
-  </eidv>
+    <br>
+    {% if email_link %}
+      <table>
+        <tr>
+          <th>Email</th>
+          <th>Drive link</th>
+        </tr>
+        {% for item in email_link %}
+          <tr>
+            <td>{{ item }}</td>
+            <td>{{ email_link[item] }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+  </div>
 </body>
 </html>

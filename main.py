@@ -3,6 +3,7 @@ import httplib2
 import logging
 import qrcode
 import uuid
+import json
 
 from flask import Flask, render_template, request, session, url_for, \
     redirect, flash
@@ -94,7 +95,13 @@ def remove_files(files):
 @app.route('/')
 def index():
     email = session.get('email', '')
-    return render_template('index.html', email=email, is_signed_in=is_signed_in())
+    email_link_json = request.args.get('email_link')
+    email_link = None
+    if email_link_json:
+        email_link = json.loads(email_link_json)
+    return render_template('index.html', email=email, 
+                                         is_signed_in=is_signed_in(),
+                                         email_link=email_link)
 
 
 @app.route('/oauth2callback')
@@ -131,7 +138,7 @@ def generate():
     if not is_signed_in():
         flash('You need to sign in first')
         return redirect(url_for('index'))
-    print request.form
+ 
     emailsStr = request.form['emails']
     # Split by '\n' and remove 'r'
     emails = emailsStr.split("\n")
@@ -155,11 +162,11 @@ def generate():
     
     app.logger.info("Generated %d QR code" % (count_generated))
     app.logger.info("Uploading QR code to Drive")
-    upload_to_Drive(file_dict)
+    email_link = upload_to_Drive(file_dict)
     app.logger.info("Finished uploading QR code to Drive")
     flash('QR code generated and uploaded to Google Drive')
     remove_files(file_dict.values())
-    return redirect(url_for('index'))
+    return redirect(url_for('index', email_link=json.dumps(email_link)))
 
 
 @app.errorhandler(500)

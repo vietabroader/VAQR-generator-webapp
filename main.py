@@ -107,13 +107,14 @@ def remove_files(files):
 @app.route('/')
 def index():
     email = session.get('email', '')
-    email_link_json = request.args.get('email_link')
-    email_link = None
-    if email_link_json:
-        email_link = json.loads(email_link_json)
+    email_link_json = request.args.get('email_link', '{}')
+    email_link = json.loads(email_link_json)
+    prev_folder_id = request.args.get('prev_folder_id', '')
+
     return render_template('index.html', email=email, 
                                          is_signed_in=is_signed_in(),
-                                         email_link=email_link)
+                                         email_link=email_link,
+                                         prev_folder_id=prev_folder_id)
 
 
 @app.route('/oauth2callback')
@@ -204,7 +205,8 @@ def generate():
     invalid_emails = len(emails_raw) - len(emails)
     flash(u'QR code generated and uploaded to Google Drive. ' +\
           u'Removed %d invalid emails' % (invalid_emails), 'success')
-    return redirect(url_for('index', email_link=json.dumps(email_link)))
+    return redirect(url_for('index', email_link=json.dumps(email_link),
+                                     prev_folder_id=folder_id))
 
 
 @app.errorhandler(500)

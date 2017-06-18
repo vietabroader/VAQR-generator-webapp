@@ -4,6 +4,7 @@ import logging
 import qrcode
 import uuid
 import json
+import re
 
 from flask import Flask, render_template, request, session, url_for, \
     redirect, flash
@@ -22,17 +23,23 @@ SCOPES = ('https://www.googleapis.com/auth/drive '
 
 def sanitize_email(e):
     e = e.replace('\r', '')
-    e = e.replace("@", "-at-")
+    e = e.replace(' ', '')
     return e    
 
 
 def email_to_filename(e):
     e = sanitize_email(e)
+    e = e.replace("@", "-at-")    
     return e + "." + IMAGE_EXTENSION
 
 
 def is_signed_in():
     return 'credentials' in session
+
+
+def is_valid_email(e):
+    pattern = r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)"
+    return len(e) > 7 and re.match(pattern, e) != None
 
 
 def get_credential():
@@ -149,6 +156,12 @@ def generate():
     folder_id = request.form['folder_id']
 
     emails = emailsStr.split("\n")
+    for e in emails:
+        e = sanitize_email(e)
+        if not is_valid_email(e):
+            flash(u'Invalid email address "%s"' % (e), 'danger')
+            return redirect(url_for('index'))
+
     app.logger.info("Received %d emails. Generating QR codes..." % (len(emails)))
     if not os.path.isdir(QR_IMAGE_DIR):
         os.makedirs(QR_IMAGE_DIR)

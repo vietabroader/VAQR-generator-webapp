@@ -12,7 +12,7 @@ from apiclient import discovery
 from googleapiclient.http import MediaFileUpload
 
 app = Flask(__name__)
-app.secret_key = str(uuid.uuid4())
+app.config['SECRET_KEY'] = str(uuid.uuid4())
 
 QR_IMAGE_DIR = "qr-images"
 IMAGE_EXTENSION = "png"
@@ -77,6 +77,8 @@ def upload_to_Drive(file_dict, folder_id):
     for email, file_path in file_dict.iteritems():
         file_metadata = { 'name': os.path.basename(file_path),
                           'parents': [folder_id] }
+        if not folder_id:
+            del file_metadata['parents']
         media = MediaFileUpload(file_path, mimetype='image/png')
         file = drive_service.files().create(body=file_metadata,
                                             media_body=media,
@@ -93,14 +95,6 @@ def remove_files(files):
             app.logger.error("Error occured when try to delete %s" % (f))
 
 
-@app.before_request
-def before_request():
-    if (not app.debug) and request.url.startswith('http://'):
-        url = request.url.replace('http://', 'https://', 1)
-        code = 301
-        return redirect(url, code=code)
-
-
 @app.route('/')
 def index():
     email = session.get('email', '')
@@ -115,10 +109,11 @@ def index():
 
 @app.route('/oauth2callback')
 def oauth2callback():
+    scheme = 'http' if app.debug else 'https'
     flow = client.flow_from_clientsecrets(
         'client_secret.json',
         scope=SCOPES,
-        redirect_uri=url_for('oauth2callback', _external=True))
+        redirect_uri=url_for('oauth2callback', _external=True, _scheme=scheme))
     flow.params['access_type'] = 'offline'           # offline access
     flow.params['include_granted_scopes'] = 'true'   # incremental auth
     if 'code' not in request.args:

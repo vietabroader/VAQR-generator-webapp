@@ -2,22 +2,20 @@ import os
 import httplib2
 import logging
 import qrcode
-import flask
-import configuration
+import uuid
 
-from flask import Flask
-from flask import render_template
-from flask import request
+from flask import Flask, render_template, request, session, url_for, redirect
 from oauth2client import client
 from apiclient import discovery
 from googleapiclient.http import MediaFileUpload
 
 app = Flask(__name__)
-app.config.from_object('configuration')
+app.secret_key = str(uuid.uuid4())
 
 QR_IMAGE_DIR = "qr-images"
 IMAGE_EXTENSION = "png"
-DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive'
+SCOPES = ('https://www.googleapis.com/auth/drive '
+         'https://www.googleapis.com/auth/userinfo.email ')
 
 
 def sanitize_email(e):
@@ -32,12 +30,35 @@ def email_to_filename(e):
 
 
 def get_credential():
-    if 'credentials' not in flask.session:
+    if 'credentials' not in session:
         return None
-    credentials = client.OAuth2Credentials.from_json(flask.session['credentials'])
+    credentials = client.OAuth2Credentials.from_json(session['credentials'])
     if credentials.access_token_expired:
         return None
     return credentials
+
+
+def get_user_info(credentials):
+  """Send a request to the UserInfo API to retrieve the user's information.
+
+  Args:
+    credentials: oauth2client.client.OAuth2Credentials instance to authorize the
+                 request.
+  Returns:
+    User information as a dict.
+  """
+  user_info_service = discovery.build(
+      serviceName='oauth2', version='v2',
+      http=credentials.authorize(httplib2.Http()))
+  user_info = None
+  try:
+    user_info = user_info_service.userinfo().get().execute()
+  except errors.HttpError, e:
+    logging.error('An error occurred when getting user info: %s', e)
+  if user_info and user_info.get('id'):
+    return user_info
+  else:
+    return None
 
 
 def upload_to_Drive(fileDict):
@@ -60,7 +81,7 @@ def upload_to_Drive(fileDict):
 def index():
     credentials = get_credential()
     if credentials is None:
-        return flask.redirect(flask.url_for('oauth2callback'))
+        return redirect(url_for('oauth2callback'))
     else:
         return render_template('index.html')
 
@@ -69,18 +90,20 @@ def index():
 def oauth2callback():
     flow = client.flow_from_clientsecrets(
         'client_secrets.json',
-        scope=DRIVE_SCOPE,
-        redirect_uri=flask.url_for('oauth2callback', _external=True))
+        scope=SCOPES,
+        redirect_uri=url_for('oauth2callback', _external=True))
     flow.params['access_type'] = 'offline'           # offline access
     flow.params['include_granted_scopes'] = 'true'   # incremental auth
-    if 'code' not in flask.request.args:
+    if 'code' not in request.args:
         auth_uri = flow.step1_get_authorize_url()
-        return flask.redirect(auth_uri)
+        return redirect(auth_uri)
     else:
-        auth_code = flask.request.args.get('code')
+        auth_code = request.args.get('code')
         credentials = flow.step2_exchange(auth_code)
-        flask.session['credentials'] = credentials.to_json()
-        return flask.redirect(flask.url_for('index'))
+        user_info = get_user_info(credentials)
+        session['credentials'] = credentials.to_json()
+        session['email'] = user_info['email']
+        return redirect(url_for('index'))
 
 
 @app.route('/generate', methods=['POST'])

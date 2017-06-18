@@ -13,19 +13,28 @@ from apiclient import discovery
 from googleapiclient.http import MediaFileUpload
 from googleapiclient import errors
 
-mode = os.getenv('VAQR_MODE', 'dev')
-if mode == 'dev':
+MODE = os.getenv('VAQR_MODE', 'dev')
+if MODE == 'dev':
     import config_dev as config
-elif mode =='prod':
+elif MODE =='prod':
     import config_prod as config
 
 app = Flask(__name__)
 app.config.from_object(config)
 
+logger = logging.getLogger("main.py")
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
+logger.info('Current mode: ' + MODE)
+
 QR_IMAGE_DIR = "qr-images"
 IMAGE_EXTENSION = "png"
 SCOPES = ('https://www.googleapis.com/auth/drive '
-         'https://www.googleapis.com/auth/userinfo.email ')
+          'https://www.googleapis.com/auth/userinfo.email ')
 
 
 def sanitize_email(e):
@@ -49,13 +58,23 @@ def is_valid_email(e):
     return len(e) > 7 and re.match(pattern, e) != None
 
 
-def get_credential():
+def get_credentials():
     if not is_signed_in():
         return None
     credentials = client.OAuth2Credentials.from_json(session['credentials'])
     if credentials.access_token_expired:
         return None
     return credentials
+
+
+def clear_credentials():
+    try:
+        credentials = get_credentials()
+        if credentials is not None:
+            credentials.revoke(httplib2.Http())
+    except Exception as err:
+        logger.error('Invalid credential')
+    session.clear()
 
 
 def get_user_info(credentials):
@@ -74,7 +93,7 @@ def get_user_info(credentials):
   try:
     user_info = user_info_service.userinfo().get().execute()
   except errors.HttpError as e:
-    app.logger.error('An error occurred when getting user info: %s', e)
+    logger.error('An error occurred when getting user info: %s', e)
   if user_info and user_info.get('id'):
     return user_info
   else:
@@ -82,7 +101,7 @@ def get_user_info(credentials):
 
 
 def upload_to_Drive(file_dict, folder_id):
-    credentials = get_credential()
+    credentials = get_credentials()
     if credentials is None:
         return None
     http = credentials.authorize(httplib2.Http())
@@ -106,7 +125,7 @@ def remove_files(files):
         try:
             os.remove(f)
         except OSError as err:
-            app.logger.error("Error occured when trying to delete %s\n%s"
+            logger.error("Error occured when trying to delete %s\n%s"
                               % (f, err))
 
 
@@ -116,7 +135,6 @@ def index():
     email_link_json = request.args.get('email_link', '{}')
     email_link = json.loads(email_link_json)
     prev_folder_id = request.args.get('prev_folder_id', '')
-
     return render_template('index.html', email=email, 
                                          is_signed_in=is_signed_in(),
                                          email_link=email_link,
@@ -147,10 +165,7 @@ def oauth2callback():
 
 @app.route('/oauth2revoke')
 def oauth2revoke():
-    credentials = get_credential()
-    if credentials is not None:
-        credentials.revoke(httplib2.Http())
-    session.clear()
+    clear_credentials()
     flash(u"Signed out successfully!", 'success')
     return redirect(url_for('index'))
 
@@ -171,10 +186,10 @@ def generate():
         if is_valid_email(e):
             emails.append(e)
 
-    app.logger.info("Received %d emails. Generating QR codes..." % (len(emails)))
+    logger.info("Received %d emails. Generating QR codes..." % (len(emails)))
     if not os.path.isdir(QR_IMAGE_DIR):
         os.makedirs(QR_IMAGE_DIR)
-        app.logger.info("Created directory %s" % (QR_IMAGE_DIR))
+        logger.info("Created directory %s" % (QR_IMAGE_DIR))
 
     count_generated = 0
     file_dict = {}
@@ -191,24 +206,30 @@ def generate():
             file_dict[e] = file_path
             count_generated += 1
         except IOError:
-            app.logger.error("Cannot create %s" % (file_name))
+            logger.error("Cannot create %s" % (file_name))
     
-    app.logger.info("Generated %d QR code" % (count_generated))
-    app.logger.debug("Uploading QR code to Drive")
+    logger.info("Generated %d QR code" % (count_generated))
+    logger.debug("Uploading QR code to Drive")
 
     try:
         email_link = upload_to_Drive(file_dict, folder_id)
-    except errors.HttpError as err:
-        flash("Error while uploading to Google Drive: %s" % (err), 'danger')
+    except errors.HttpError:
         remove_files(file_dict.values())
+        flash('Error while uploading to Google Drive. Please check your folder ID.', 
+              'danger')
         return redirect(url_for('index'))
+    except client.HttpAccessTokenRefreshError:
+        clear_credentials()
+        remove_files(file_dict.values())
+        flash('Authorization error. Please sign in again.', 'warning')
+        return redirect(url_for('index'))        
 
-    app.logger.info("Finished uploading QR code to Drive")
+    logger.info('Finished uploading QR code to Drive')
 
     remove_files(file_dict.values())
     
     invalid_emails = len(emails_raw) - len(emails)
-    flash(u'QR code generated and uploaded to Google Drive. ' +\
+    flash(u'Generated and uploaded %d QR Codes. ' % (len(emails)) +\
           u'Removed %d invalid emails' % (invalid_emails), 'success')
     return redirect(url_for('index', email_link=json.dumps(email_link),
                                      prev_folder_id=folder_id))
@@ -216,7 +237,7 @@ def generate():
 
 @app.errorhandler(500)
 def server_error(e):
-    app.logger.exception('An error occurred during a request.')
+    logger.exception('An error occurred during a request.')
     return """
     An internal error occurred: <pre>{}</pre>
     See logs for full stacktrace.
@@ -224,7 +245,6 @@ def server_error(e):
 
 
 if __name__ == '__main__':
-    app.logger.setLevel(logging.DEBUG)
     # This is used when running locally. Gunicorn is used to run the
     # application on Google App Engine. See entrypoint in app.yaml.
     app.run(host='127.0.0.1', port=8080, debug=True)

@@ -11,6 +11,7 @@ from flask import Flask, render_template, request, session, url_for, \
 from oauth2client import client
 from apiclient import discovery
 from googleapiclient.http import MediaFileUpload
+from googleapiclient import errors
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = str(uuid.uuid4())
@@ -66,7 +67,7 @@ def get_user_info(credentials):
   user_info = None
   try:
     user_info = user_info_service.userinfo().get().execute()
-  except errors.HttpError, e:
+  except errors.HttpError as e:
     app.logger.error('An error occurred when getting user info: %s', e)
   if user_info and user_info.get('id'):
     return user_info
@@ -98,8 +99,9 @@ def remove_files(files):
     for f in files:
         try:
             os.remove(f)
-        except OSError:
-            app.logger.error("Error occured when try to delete %s" % (f))
+        except OSError as err:
+            app.logger.error("Error occured when trying to delete %s\n%s"
+                              % (f, err))
 
 
 @app.route('/')
@@ -155,12 +157,12 @@ def generate():
     emailsStr = request.form['emails']
     folder_id = request.form['folder_id']
 
-    emails = emailsStr.split("\n")
-    for e in emails:
+    emails_raw = emailsStr.split("\n")
+    emails = []
+    for e in emails_raw:
         e = sanitize_email(e)
-        if not is_valid_email(e):
-            flash(u'Invalid email address "%s"' % (e), 'danger')
-            return redirect(url_for('index'))
+        if is_valid_email(e):
+            emails.append(e)
 
     app.logger.info("Received %d emails. Generating QR codes..." % (len(emails)))
     if not os.path.isdir(QR_IMAGE_DIR):
@@ -170,8 +172,12 @@ def generate():
     count_generated = 0
     file_dict = {}
     for e in emails:
-        img_qr = qrcode.make(e)
         file_name = email_to_filename(e)
+        if len(file_name) == 0:
+            continue
+
+        img_qr = qrcode.make(e)
+
         file_path = os.path.join(QR_IMAGE_DIR, file_name)
         try:
             img_qr.save(file_path)
@@ -181,11 +187,23 @@ def generate():
             app.logger.error("Cannot create %s" % (file_name))
     
     app.logger.info("Generated %d QR code" % (count_generated))
-    app.logger.info("Uploading QR code to Drive")
-    email_link = upload_to_Drive(file_dict, folder_id)
+    app.logger.debug("Uploading QR code to Drive")
+
+    try:
+        email_link = upload_to_Drive(file_dict, folder_id)
+    except errors.HttpError as err:
+        flash("Error while uploading to Google Drive: %s" % (err), 'danger')
+        return redirect(url_for('index'))
+    finally:
+        remove_files(file_dict.values())
+
     app.logger.info("Finished uploading QR code to Drive")
-    flash(u'QR code generated and uploaded to Google Drive', 'success')
+
     remove_files(file_dict.values())
+    
+    invalid_emails = len(emails_raw) - len(emails)
+    flash(u'QR code generated and uploaded to Google Drive. ' +\
+          u'Removed %d invalid emails' % (invalid_emails), 'success')
     return redirect(url_for('index', email_link=json.dumps(email_link)))
 
 
@@ -199,7 +217,7 @@ def server_error(e):
 
 
 if __name__ == '__main__':
-    app.logger.setLevel(logging.INFO)
+    app.logger.setLevel(logging.DEBUG)
     # This is used when running locally. Gunicorn is used to run the
     # application on Google App Engine. See entrypoint in app.yaml.
     app.run(host='127.0.0.1', port=8080, debug=True)

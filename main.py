@@ -177,9 +177,13 @@ def generate():
     if not is_signed_in():
         flash(u'You need to sign in first', 'warning')
         return redirect(url_for('index'))
+
+    emailsStr = request.form['emails'].strip()
+    folder_id = request.form['folder_id'].strip()
     
-    emailsStr = request.form['emails']
-    folder_id = request.form['folder_id']
+    if len(emailsStr) == 0:
+        flash(u'Please enter at least 1 email address', 'warning')
+        return redirect(url_for('index'))
 
     emails = emailsStr.split("\n")
 

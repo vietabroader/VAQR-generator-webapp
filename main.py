@@ -128,7 +128,7 @@ def remove_files(files):
         try:
             os.remove(f)
         except OSError as err:
-            logger.error("Error occured when trying to delete %s: %s" % (f, err))
+            logger.error(err)
 
 
 @app.route('/')
@@ -225,7 +225,7 @@ def generate():
     logger.info('Finished uploading QR code to Drive')
 
     remove_files([ef[1] for ef in email_file])
-    
+
     flash(u'Generated and uploaded %d QR Codes. ' % (count_generated), 'success')
     return redirect(url_for('index', email_link=json.dumps(email_link),
                                      prev_folder_id=folder_id))

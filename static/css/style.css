@@ -39,9 +39,9 @@ code {
 }
 
 .table td, .table th, .table tr {
-    height: 60px;
+    height: 50px;
     overflow: auto;
-    /*white-space: nowrap;*/
+    white-space: nowrap;
 }
 
 .noselect {

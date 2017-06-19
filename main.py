@@ -100,23 +100,26 @@ def get_user_info(credentials):
     return None
 
 
-def upload_to_Drive(file_dict, folder_id):
+def upload_to_Drive(email_file, folder_id):
     credentials = get_credentials()
     if credentials is None:
-        return None
+        raise client.HttpAccessTokenRefreshError
     http = credentials.authorize(httplib2.Http())
     drive_service = discovery.build('drive', 'v3', http=http)
-    links = {}
-    for email, file_path in file_dict.iteritems():
-        file_metadata = { 'name': os.path.basename(file_path),
-                          'parents': [folder_id] }
-        if not folder_id:
-            del file_metadata['parents']
-        media = MediaFileUpload(file_path, mimetype='image/png')
-        file = drive_service.files().create(body=file_metadata,
-                                            media_body=media,
-                                            fields='webViewLink').execute()
-        links[email] = file.get('webViewLink')
+    links = []
+    for email, file_path in email_file:
+        link = ''
+        if os.path.exists(file_path):
+            file_metadata = { 'name': os.path.basename(file_path),
+                            'parents': [folder_id] }
+            if not folder_id:
+                del file_metadata['parents']
+            media = MediaFileUpload(file_path, mimetype='image/png')
+            file = drive_service.files().create(body=file_metadata,
+                                                media_body=media,
+                                                fields='webViewLink').execute()
+            link = file.get('webViewLink')
+        links.append((email, link))
     return links
 
 
@@ -125,8 +128,7 @@ def remove_files(files):
         try:
             os.remove(f)
         except OSError as err:
-            logger.error("Error occured when trying to delete %s\n%s"
-                              % (f, err))
+            logger.error("Error occured when trying to delete %s: %s" % (f, err))
 
 
 @app.route('/')
@@ -179,12 +181,7 @@ def generate():
     emailsStr = request.form['emails']
     folder_id = request.form['folder_id']
 
-    emails_raw = emailsStr.split("\n")
-    emails = []
-    for e in emails_raw:
-        e = sanitize_email(e)
-        if is_valid_email(e):
-            emails.append(e)
+    emails = emailsStr.split("\n")
 
     logger.info("Received %d emails. Generating QR codes..." % (len(emails)))
     if not os.path.isdir(QR_IMAGE_DIR):
@@ -192,18 +189,19 @@ def generate():
         logger.info("Created directory %s" % (QR_IMAGE_DIR))
 
     count_generated = 0
-    file_dict = {}
+    email_file = []
     for e in emails:
-        file_name = email_to_filename(e)
-        if len(file_name) == 0:
+        if not is_valid_email(sanitize_email(e)):
+            email_file.append((e, ''))
             continue
 
+        file_name = email_to_filename(e)
         img_qr = qrcode.make(e)
 
         file_path = os.path.join(QR_IMAGE_DIR, file_name)
         try:
             img_qr.save(file_path)
-            file_dict[e] = file_path
+            email_file.append((e, file_path))
             count_generated += 1
         except IOError:
             logger.error("Cannot create %s" % (file_name))
@@ -212,25 +210,23 @@ def generate():
     logger.debug("Uploading QR code to Drive")
 
     try:
-        email_link = upload_to_Drive(file_dict, folder_id)
+        email_link = upload_to_Drive(email_file, folder_id)
     except errors.HttpError:
-        remove_files(file_dict.values())
+        remove_files([ef[1] for ef in email_file])
         flash('Error while uploading to Google Drive. Please check your folder ID.', 
               'danger')
         return redirect(url_for('index'))
     except client.HttpAccessTokenRefreshError:
         clear_credentials()
-        remove_files(file_dict.values())
+        remove_files([ef[1] for ef in email_file])
         flash('Authorization error. Please sign in again.', 'warning')
         return redirect(url_for('index'))        
 
     logger.info('Finished uploading QR code to Drive')
 
-    remove_files(file_dict.values())
+    remove_files([ef[1] for ef in email_file])
     
-    invalid_emails = len(emails_raw) - len(emails)
-    flash(u'Generated and uploaded %d QR Codes. ' % (len(emails)) +\
-          u'Removed %d invalid emails' % (invalid_emails), 'success')
+    flash(u'Generated and uploaded %d QR Codes. ' % (count_generated), 'success')
     return redirect(url_for('index', email_link=json.dumps(email_link),
                                      prev_folder_id=folder_id))
 

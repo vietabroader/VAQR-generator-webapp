@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block body %}
 
-<div class="row" style="margin-bottom:10px">
+<div class="row" style="margin-bottom:30px">
   <div class="col-md-6 col-md-offset-3">
     
     <!-- Begin Alert -->
@@ -27,8 +27,8 @@
           </h4>
         </div>
         <div id="collapse1" class="panel-collapse collapse">
-          <div class="panel-body"><p>This web app generates a list of email addresses
-          to their corresponding QR codes images then uploads these images to Google Drive.</p></div>
+          <div class="panel-body"><p>This web app generates a batch of QR code images from a list of
+          email addresses then uploads these images to Google Drive.</p></div>
         </div>
       </div>
       <div class="panel panel-default">
@@ -71,30 +71,38 @@
 </div> <!-- div row -->
 
 <div class="row">  
-  <div class="col-md-10 col-md-offset-1">
+  <div class="col-md-8 col-md-offset-2">
     {% if email_link %}
-      <table class="table"><thead>
-        <td>
-          <table class="table" style="table-layout:fixed;width:250px;">
-            <tr><th class="noselect">Email</th></tr>
-            {% for item in email_link %}
-              <tr>
-                <td>{{ item }}</td>
-              </tr>
-            {% endfor %}
-          </table>
-        </td>
-        <td>
-          <table class="table">
-            <tr><th class="noselect">Google Drive Links</th></tr>
-            {% for item in email_link %}
-              <tr>
-                <td><a href="{{ email_link[item] }}">{{ email_link[item] }}</a></td>
-              </tr>
-            {% endfor %}
-          </table>
-        </td>
-      </thead></table>
+    <table class="table"><thead>
+      <td style="width:1%;white-space:nowrap;padding:0;">
+        <table class="table" style="table-layout:fixed;width:250px;">
+          <tr><th class="noselect">Email</th></tr>
+          {% for item in email_link %}
+            {% if 'http' in item[1] %}
+            <tr class='success'>
+            {% else %}
+            <tr class='danger'>
+            {% endif %}
+              <td>{{ item[0] }}</td>
+            </tr>
+          {% endfor %}
+        </table>
+      </td>
+      <td style="padding:0;">
+        <table class="table">
+          <tr><th class="noselect">Google Drive Links</th></tr>
+          {% for item in email_link %}
+            {% if 'http' in item[1] %}
+            <tr class='success'>
+            {% else %}
+            <tr class='danger'>
+            {% endif %}
+              <td><a href="{{ item[1] }}">{{ item[1] }}</a></td>
+            </tr>
+          {% endfor %}
+        </table>
+      </td>
+    </thead></table>
     {% endif %}
   </div> <!-- div col offset -->
 </div> <!-- div row -->

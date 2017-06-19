@@ -44,13 +44,13 @@
           {% if not is_signed_in: %}
           <form action="{{ url_for('oauth2callback') }}" method="GET"
                 class="navbar-form navbar-left">
-            <button type="submit" class="btn btn-default">Connect to Google Drive</button>
+            <button type="submit" class="btn btn-success">Connect to Google Drive</button>
           </form>
           {% else %}
           <p class="navbar-text">Connected to Google Drive using {{ email }} </p>
           <form action="{{ url_for('oauth2revoke') }}" method="GET"
                 class="navbar-form navbar-left">
-            <button type="submit" class="btn btn-default">Sign out</button>
+            <button type="submit" class="btn btn-danger">Sign out</button>
           </form>
           {% endif %}
         </div>

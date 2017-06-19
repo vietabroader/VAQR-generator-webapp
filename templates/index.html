@@ -94,10 +94,11 @@
           {% for item in email_link %}
             {% if 'http' in item[1] %}
             <tr class='success'>
+              <td><a href="{{ item[1] }}">{{ item[1] }}</a></td>
             {% else %}
             <tr class='danger'>
+              <td>Error</td>
             {% endif %}
-              <td><a href="{{ item[1] }}">{{ item[1] }}</a></td>
             </tr>
           {% endfor %}
         </table>

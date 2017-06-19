@@ -13,10 +13,10 @@ from apiclient import discovery
 from googleapiclient.http import MediaFileUpload
 from googleapiclient import errors
 
-MODE = os.getenv('VAQR_MODE', 'dev')
+MODE = os.environ.get('VAQR_MODE', 'dev')
 if MODE == 'dev':
     import config_dev as config
-elif MODE =='prod':
+elif MODE == 'prod':
     import config_prod as config
 
 app = Flask(__name__)

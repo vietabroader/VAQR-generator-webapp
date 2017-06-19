@@ -95,7 +95,7 @@
           {% for item in email_link %}
             {% if 'http' in item[1] %}
             <tr class='success'>
-              <td><a href="{{ item[1] }}">{{ item[1] }}</a></td>
+              <td><a href="{{ item[1] }}" target="_blank">{{ item[1] }}</a></td>
             {% else %}
             <tr class='danger'>
               <td>Error</td>

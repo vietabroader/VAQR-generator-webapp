@@ -1,3 +1,9 @@
 runtime: python
 env: flex
 entrypoint: gunicorn -b :$PORT main:app
+env_variables:
+  VAQR_MODE: 'prod'
+
+skip_files:
+- ^(.*/)?\.pyc$
+- env

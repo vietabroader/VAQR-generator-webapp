@@ -1,23 +1,60 @@
 {% extends "layout.html" %}
 {% block body %}
 
-<div class="row">
+<div class="row" style="margin-bottom:10px">
   <div class="col-md-6 col-md-offset-3">
     
-      {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-        <div class="alert alert-{{ category }} fade in">
-          <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
-          {{ message }}
-        </div>
-        {% endfor %}
-      {% endif %}
-      {% endwith %}
+    <!-- Begin Alert -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }} fade in">
+        <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+        {{ message }}
+      </div>
+      {% endfor %}
+    {% endif %}
+    {% endwith %}
+    <!-- End Alert -->
 
+    <!-- Begin Instruction -->
+    <div class="panel-group" id="accordion">
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h4 class="panel-title">
+            <a data-toggle="collapse" data-parent="#accordion" href="#collapse1">
+            What is VAQR Generator?</a>
+          </h4>
+        </div>
+        <div id="collapse1" class="panel-collapse collapse">
+          <div class="panel-body"><p>This web app generates a list of email addresses
+          to their corresponding QR codes images then uploads these images to Google Drive.</p></div>
+        </div>
+      </div>
+      <div class="panel panel-default">
+        <div class="panel-heading">
+          <h4 class="panel-title">
+            <a data-toggle="collapse" data-parent="#accordion" href="#collapse2">
+            How do I find Google Drive folder ID?</a>
+          </h4>
+        </div>
+        <div id="collapse2" class="panel-collapse collapse">
+          <div class="panel-body">
+            <p>Folder ID is the last part of the URL of the corresponding folder. 
+            For example, if your Google Drive folder URL is:</p>
+            <p><code>https://drive.google.com/drive/u/1/folders/<mark>0B8_haa9G3iBlb0pxxnBCTzZ5R1k</mark></code></p>
+            <p>Its corresponding folder ID is: <code><mark>0B8_haa9G3iBlb0pxxnBCTzZ5R1k</mark></code></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- End Instruction -->
+
+    <!-- Begin Form -->
     <form action="{{ url_for('generate') }}" method="POST" id="emails_to_qr">
       <div class="form-group">
-        <label for="folder_id">Google Drive Folder ID</label>
+        <label for="folder_id">Google Drive folder ID</label>
+        <p>Remember to <a href="https://support.google.com/drive/answer/7166529?co=GENIE.Platform%3DDesktop&hl=en">share the folder</a> to the code recipients.</p>
         <input type="text" class="form-control" name="folder_id" aria-describedby="emailHelp"
                placeholder="Leave empty for root folder" value="{{ prev_folder_id }}">
       </div>
@@ -28,16 +65,18 @@
       </div>
       <input type="submit" value="Generate" class="btn btn-primary">
     </form>
+    <!-- End Form -->
+    
   </div> <!-- div col offset -->
 </div> <!-- div row -->
 
 <div class="row">  
-  <div class="col-md-8 col-md-offset-2">
+  <div class="col-md-10 col-md-offset-1">
     {% if email_link %}
       <table class="table"><thead>
         <td>
           <table class="table" style="table-layout:fixed;width:250px;">
-            <tr><th>Email</th></tr>
+            <tr><th class="noselect">Email</th></tr>
             {% for item in email_link %}
               <tr>
                 <td>{{ item }}</td>
@@ -47,7 +86,7 @@
         </td>
         <td>
           <table class="table">
-            <tr><th>Google Drive Links</th></tr>
+            <tr><th class="noselect">Google Drive Links</th></tr>
             {% for item in email_link %}
               <tr>
                 <td><a href="{{ email_link[item] }}">{{ email_link[item] }}</a></td>

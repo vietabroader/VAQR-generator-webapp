@@ -23,7 +23,7 @@ body {
 /* Not required for template or sticky footer method. */
 
 body > .container {
-  padding: 60px 15px 0;
+  padding: 80px 15px 10px;
 }
 .container .text-muted {
   margin: 20px 0;
@@ -39,7 +39,17 @@ code {
 }
 
 .table td, .table th, .table tr {
-    height: 62px;
+    height: 60px;
     overflow: auto;
-    white-space: nowrap;
+    /*white-space: nowrap;*/
+}
+
+.noselect {
+  -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+     -khtml-user-select: none; /* Konqueror HTML */
+       -moz-user-select: none; /* Firefox */
+        -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */
 }

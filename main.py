@@ -33,7 +33,7 @@ logger.info('Current mode: ' + MODE)
 
 QR_IMAGE_DIR = "qr-images"
 IMAGE_EXTENSION = "png"
-SCOPES = ('https://www.googleapis.com/auth/drive '
+SCOPES = ('https://www.googleapis.com/auth/drive.file '
           'https://www.googleapis.com/auth/userinfo.email ')
 
 

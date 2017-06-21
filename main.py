@@ -135,12 +135,17 @@ def remove_files(files):
 def index():
     email = session.get('email', '')
     email_link_json = request.args.get('email_link', '{}')
-    email_link = json.loads(email_link_json)
     prev_folder_id = request.args.get('prev_folder_id', '')
-    return render_template('index.html', email=email, 
-                                         is_signed_in=is_signed_in(),
-                                         email_link=email_link,
-                                         prev_folder_id=prev_folder_id)
+    try:
+        email_link = json.loads(email_link_json)
+    except ValueError:
+        email_link = '{}'
+
+    return render_template('index.html',
+                           email=email,
+                           is_signed_in=is_signed_in(),
+                           email_link=email_link,
+                           prev_folder_id=prev_folder_id)
 
 
 @app.route('/oauth2callback')

@@ -139,7 +139,7 @@ def index():
     try:
         email_link = json.loads(email_link_json)
     except ValueError:
-        email_link = '{}'
+        email_link = json.loads('{}')
 
     return render_template('index.html',
                            email=email,
